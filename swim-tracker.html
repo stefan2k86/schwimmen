@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#0077b6">
+<title>Swim Tracker</title>
+<style>
+  :root {
+    --primary: #0077b6;
+    --primary-dark: #005f8e;
+    --primary-light: #e0f2fe;
+    --accent: #00b4d8;
+    --success: #2ecc71;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --bg: #f0f8ff;
+    --card: #ffffff;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --border: #d1e8f7;
+    --radius: 14px;
+    --shadow: 0 2px 12px rgba(0,119,182,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* NAV */
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); display: flex; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.08); }
+  .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 4px 14px; gap: 3px; border: none; background: none; color: var(--text-muted); font-size: 11px; cursor: pointer; transition: color 0.2s; }
+  .nav-btn.active { color: var(--primary); }
+  .nav-btn svg { width: 24px; height: 24px; }
+
+  /* HEADER */
+  .header { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: white; padding: 54px 20px 20px; position: relative; }
+  .header h1 { font-size: 22px; font-weight: 700; }
+  .header p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+  .header-actions { position: absolute; top: 14px; right: 16px; display: flex; gap: 8px; }
+  .icon-btn { background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+  /* PAGES */
+  .page { display: none; padding-bottom: 80px; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); margin: 12px 16px; overflow: hidden; }
+  .card-header { padding: 14px 16px; background: var(--primary-light); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .card-header h3 { font-size: 15px; color: var(--primary-dark); font-weight: 600; }
+  .card-body { padding: 0; }
+
+  /* DAY ITEMS */
+  .day-item { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; gap: 12px; transition: background 0.15s; }
+  .day-item:last-child { border-bottom: none; }
+  .day-item:active { background: var(--primary-light); }
+  .day-badge { background: var(--primary); color: white; border-radius: 10px; min-width: 42px; height: 42px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .day-badge span { font-size: 16px; line-height: 1; }
+  .day-info { flex: 1; }
+  .day-info h4 { font-size: 15px; font-weight: 600; }
+  .day-info p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .day-arrow { color: var(--text-muted); }
+
+  /* COMPETITION TABLE */
+  .comp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .comp-table th { background: var(--primary-light); color: var(--primary-dark); padding: 10px 8px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .comp-table td { padding: 11px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .comp-table tr:last-child td { border-bottom: none; }
+  .comp-table tr:active { background: var(--primary-light); }
+  .time-cell { font-family: 'Courier New', monospace; font-weight: 700; font-size: 14px; }
+  .time-good { color: var(--success); }
+  .time-bad { color: var(--danger); }
+  .time-neutral { color: var(--text-muted); }
+  .discipline { font-weight: 600; font-size: 14px; }
+  .action-col { width: 32px; }
+  .edit-btn { background: none; border: none; color: var(--primary); cursor: pointer; padding: 4px; border-radius: 6px; }
+
+  /* FAB */
+  .fab { position: fixed; bottom: 80px; right: 20px; background: var(--primary); color: white; border: none; border-radius: 50%; width: 56px; height: 56px; font-size: 28px; cursor: pointer; box-shadow: 0 4px 16px rgba(0,119,182,0.4); display: flex; align-items: center; justify-content: center; z-index: 90; transition: transform 0.15s; }
+  .fab:active { transform: scale(0.92); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: flex-end; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 20px 20px 0 0; width: 100%; max-width: 500px; padding: 20px; max-height: 90vh; overflow-y: auto; }
+  .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--primary-dark); }
+  .modal-close { float: right; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); margin-top: -4px; }
+
+  /* FORM */
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .form-group input { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 11px 14px; font-size: 15px; outline: none; transition: border 0.2s; }
+  .form-group input:focus { border-color: var(--primary); }
+  .time-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .time-row input { text-align: center; font-size: 18px; font-weight: 700; font-family: 'Courier New', monospace; }
+  .time-label { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .time-separator { display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; color: var(--primary); padding-top: 8px; }
+
+  .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px; transition: opacity 0.15s; }
+  .btn:active { opacity: 0.8; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-danger { background: var(--danger); color: white; margin-top: 10px; }
+  .btn-ghost { background: var(--border); color: var(--text); }
+
+  /* SETUP PAGE */
+  .setup-card { background: white; border-radius: var(--radius); padding: 20px; margin: 16px; box-shadow: var(--shadow); }
+  .setup-card h3 { color: var(--primary); font-size: 16px; margin-bottom: 12px; }
+  .setup-card p { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px; }
+  .setup-card code { background: var(--primary-light); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; color: var(--primary-dark); word-break: break-all; }
+  .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .status-ok { background: var(--success); }
+  .status-err { background: var(--danger); }
+  .status-warn { background: var(--warning); }
+
+  /* BESTZEITEN */
+  .best-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .best-item:last-child { border-bottom: none; }
+  .best-disc { font-weight: 600; font-size: 14px; }
+  .best-time { font-family: 'Courier New', monospace; font-weight: 700; font-size: 16px; color: var(--primary); }
+  .best-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* LOADING */
+  .loading { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state { text-align: center; padding: 40px 20px; }
+  .empty-state svg { opacity: 0.3; margin-bottom: 12px; }
+  .empty-state p { color: var(--text-muted); font-size: 14px; }
+
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; padding: 16px 16px 6px; }
+
+  .back-btn { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 20px; font-size: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- PAGE: TAGE (Startseite) -->
+<div class="page active" id="page-home">
+  <div class="header">
+    <div class="header-actions">
+      <button class="icon-btn" onclick="refreshData()" title="Aktualisieren">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+      </button>
+    </div>
+    <h1>🏊 Swim Tracker</h1>
+    <p id="home-subtitle">Wettkampftage</p>
+  </div>
+  <div class="section-title">Wettkampftage</div>
+  <div class="card">
+    <div class="card-body" id="days-list">
+      <div class="loading"><div class="spinner"></div><p>Laden...</p></div>
+    </div>
+  </div>
+  <button class="fab" onclick="openDayModal()" title="Tag hinzufügen">＋</button>
+</div>
+
+<!-- PAGE: WETTKÄMPFE (eines Tages) -->
+<div class="page" id="page-day">
+  <div class="header">
+    <div class="header-actions">
+      <button class="icon-btn" onclick="openDayModal(currentDay)" title="Tag bearbeiten">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+    </div>
+    <button class="back-btn" onclick="showPage('home')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Zurück
+    </button>
+    <h1 id="day-page-title">Tag</h1>
+    <p id="day-page-date"></p>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <div class="card-body" id="comps-list">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+  <button class="fab" onclick="openCompModal()" title="Wettkampf hinzufügen">＋</button>
+</div>
+
+<!-- PAGE: BESTZEITEN -->
+<div class="page" id="page-best">
+  <div class="header">
+    <h1>🏅 Bestzeiten</h1>
+    <p>Beste Zeiten je Disziplin</p>
+  </div>
+  <div class="section-title">Alle Disziplinen</div>
+  <div class="card">
+    <div class="card-body" id="best-list">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: EINSTELLUNGEN -->
+<div class="page" id="page-settings">
+  <div class="header">
+    <h1>⚙️ Einstellungen</h1>
+    <p>Google Sheets Verbindung</p>
+  </div>
+
+  <div class="setup-card">
+    <h3>📊 Google Sheets Setup</h3>
+    <p>Damit die App funktioniert, brauche ich drei Dinge von dir:</p>
+    <div class="form-group">
+      <label>Spreadsheet ID</label>
+      <input type="text" id="cfg-sheet-id" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" />
+      <p style="font-size:12px;color:var(--text-muted);margin-top:5px;">Aus der URL: docs.google.com/spreadsheets/d/<strong>HIER</strong>/edit</p>
+    </div>
+    <div class="form-group">
+      <label>API Key</label>
+      <input type="text" id="cfg-api-key" placeholder="AIzaSy..." />
+      <p style="font-size:12px;color:var(--text-muted);margin-top:5px;">Erstelle einen API-Key in der <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--primary)">Google Cloud Console</a> (Sheets API aktivieren!)</p>
+    </div>
+    <button class="btn btn-primary" onclick="saveConfig()">💾 Speichern & Verbinden</button>
+    <div id="conn-status" style="margin-top:12px;font-size:13px;"></div>
+  </div>
+
+  <div class="setup-card">
+    <h3>📋 Tabellen-Struktur</h3>
+    <p>Erstelle in deiner Google Tabelle <strong>zwei Tabellenblätter</strong> mit exakt diesen Namen:</p>
+    <p><strong>Blatt 1:</strong> <code>Tage</code><br>Spalten: <code>ID | Datum | Bezeichnung</code></p>
+    <p><strong>Blatt 2:</strong> <code>Wettkämpfe</code><br>Spalten: <code>ID | TagID | Disziplin | Meldezeit | Bestzeit | GeschwommeneZeit</code></p>
+    <p style="margin-top:8px;">Zeitformat: <code>M,SS,Z</code> → z.B. <code>1,23,4</code> = 1 Min, 23 Sek, 4 Zehntel</p>
+  </div>
+
+  <div class="setup-card">
+    <h3>🔒 Tabelle öffentlich lesbar machen</h3>
+    <p>Damit die App lesen kann, ohne Login: Tabelle → Freigeben → <strong>Jeder mit dem Link (Betrachter)</strong></p>
+    <p>Zum Schreiben (Speichern) wird ein <strong>Service Account</strong> empfohlen – oder du trägst Wettkämpfe direkt in die Tabelle ein.</p>
+    <div id="write-method-info" style="margin-top:8px;"></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-home" onclick="showPage('home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Tage
+  </button>
+  <button class="nav-btn" id="nav-best" onclick="showPage('best')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+    Bestzeiten
+  </button>
+  <button class="nav-btn" id="nav-settings" onclick="showPage('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Einstellungen
+  </button>
+</nav>
+
+<!-- MODAL: TAG -->
+<div class="modal-overlay" id="modal-day">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-day')">×</button>
+    <h2 id="modal-day-title">Neuer Wettkampftag</h2>
+    <input type="hidden" id="day-edit-id">
+    <div class="form-group">
+      <label>Datum</label>
+      <input type="date" id="day-date">
+    </div>
+    <div class="form-group">
+      <label>Bezeichnung</label>
+      <input type="text" id="day-name" placeholder="z.B. Stadtmeisterschaften Berlin">
+    </div>
+    <button class="btn btn-primary" onclick="saveDay()">✓ Speichern</button>
+    <button class="btn btn-danger" id="day-delete-btn" onclick="deleteDay()" style="display:none">🗑 Tag löschen</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-day')" style="margin-top:8px">Abbrechen</button>
+  </div>
+</div>
+
+<!-- MODAL: WETTKAMPF -->
+<div class="modal-overlay" id="modal-comp">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-comp')">×</button>
+    <h2 id="modal-comp-title">Neuer Wettkampf</h2>
+    <input type="hidden" id="comp-edit-id">
+    <div class="form-group">
+      <label>Disziplin</label>
+      <input type="text" id="comp-discipline" placeholder="z.B. 100m Freistil">
+    </div>
+    <div class="form-group">
+      <label>Meldezeit (Min, Sek, Zehntel)</label>
+      <div class="time-row">
+        <div><input type="number" id="mt-m" placeholder="0" min="0" max="59"><div class="time-label">Min</div></div>
+        <div><input type="number" id="mt-s" placeholder="00" min="0" max="59"><div class="time-label">Sek</div></div>
+        <div><input type="number" id="mt-z" placeholder="0" min="0" max="9"><div class="time-label">Zehntel</div></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Bestzeit (Min, Sek, Zehntel)</label>
+      <div class="time-row">
+        <div><input type="number" id="bz-m" placeholder="0" min="0" max="59"><div class="time-label">Min</div></div>
+        <div><input type="number" id="bz-s" placeholder="00" min="0" max="59"><div class="time-label">Sek</div></div>
+        <div><input type="number" id="bz-z" placeholder="0" min="0" max="9"><div class="time-label">Zehntel</div></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Geschwommene Zeit (Min, Sek, Zehntel)</label>
+      <div class="time-row">
+        <div><input type="number" id="gz-m" placeholder="0" min="0" max="59"><div class="time-label">Min</div></div>
+        <div><input type="number" id="gz-s" placeholder="00" min="0" max="59"><div class="time-label">Sek</div></div>
+        <div><input type="number" id="gz-z" placeholder="0" min="0" max="9"><div class="time-label">Zehntel</div></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveComp()">✓ Speichern</button>
+    <button class="btn btn-danger" id="comp-delete-btn" onclick="deleteComp()" style="display:none">🗑 Löschen</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-comp')" style="margin-top:8px">Abbrechen</button>
+  </div>
+</div>
+
+<script>
+// ===================== CONFIG =====================
+let config = {
+  sheetId: '',
+  apiKey: ''
+};
+
+let allDays = [];
+let allComps = [];
+let currentDay = null;
+let editingComp = null;
+
+// ===================== INIT =====================
+window.onload = () => {
+  const saved = localStorage.getItem('swimconfig');
+  if (saved) {
+    config = JSON.parse(saved);
+    document.getElementById('cfg-sheet-id').value = config.sheetId || '';
+    document.getElementById('cfg-api-key').value = config.apiKey || '';
+  }
+  if (config.sheetId && config.apiKey) {
+    loadAllData();
+  } else {
+    document.getElementById('days-list').innerHTML = `<div class="empty-state"><p>⚙️ Bitte zuerst die Einstellungen konfigurieren</p></div>`;
+    showPage('settings');
+  }
+};
+
+// ===================== NAVIGATION =====================
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const navBtn = document.getElementById('nav-' + page);
+  if (navBtn) navBtn.classList.add('active');
+  if (page === 'best') renderBestzeiten();
+  if (page === 'settings') loadConfigStatus();
+}
+
+// ===================== GOOGLE SHEETS API =====================
+async function sheetsGet(range) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/${encodeURIComponent(range)}?key=${config.apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Sheets API Fehler: ${res.status}`);
+  const data = await res.json();
+  return data.values || [];
+}
+
+async function sheetsAppend(sheetName, values) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/${encodeURIComponent(sheetName)}:append?valueInputOption=RAW&key=${config.apiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [values] })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'Fehler beim Speichern');
+  }
+  return res.json();
+}
+
+async function sheetsUpdate(range, values) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW&key=${config.apiKey}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [values] })
+  });
+  if (!res.ok) throw new Error('Fehler beim Aktualisieren');
+  return res.json();
+}
+
+async function sheetsClear(range) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${config.sheetId}/values/${encodeURIComponent(range)}:clear?key=${config.apiKey}`;
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+  if (!res.ok) throw new Error('Fehler beim Löschen');
+  return res.json();
+}
+
+async function getAllRows(sheetName) {
+  try {
+    const rows = await sheetsGet(`${sheetName}!A2:Z1000`);
+    return rows;
+  } catch(e) { return []; }
+}
+
+async function findRowNumber(sheetName, id) {
+  const rows = await sheetsGet(`${sheetName}!A2:A1000`);
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i][0] === id) return i + 2; // 1-indexed, +1 for header
+  }
+  return -1;
+}
+
+// ===================== DATA LOAD =====================
+async function loadAllData() {
+  try {
+    const [dayRows, compRows] = await Promise.all([
+      getAllRows('Tage'),
+      getAllRows('Wettkämpfe')
+    ]);
+
+    allDays = dayRows.map(r => ({
+      id: r[0] || '',
+      date: r[1] || '',
+      name: r[2] || ''
+    })).filter(d => d.id);
+
+    allComps = compRows.map(r => ({
+      id: r[0] || '',
+      tagId: r[1] || '',
+      discipline: r[2] || '',
+      meldezeit: r[3] || '',
+      bestzeit: r[4] || '',
+      geschwommen: r[5] || ''
+    })).filter(c => c.id);
+
+    renderDays();
+  } catch(e) {
+    document.getElementById('days-list').innerHTML = `<div class="empty-state"><p>❌ Fehler: ${e.message}</p><p style="margin-top:8px;font-size:12px">Einstellungen prüfen</p></div>`;
+    showToast('Ladefehler: ' + e.message);
+  }
+}
+
+async function refreshData() {
+  showToast('Aktualisiere...');
+  await loadAllData();
+  showToast('✓ Aktualisiert');
+}
+
+// ===================== RENDER DAYS =====================
+function renderDays() {
+  const list = document.getElementById('days-list');
+  if (!allDays.length) {
+    list.innerHTML = `<div class="empty-state"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><p>Noch keine Tage angelegt.<br>Tippe + um einen Tag hinzuzufügen.</p></div>`;
+    return;
+  }
+  const sorted = [...allDays].sort((a,b) => a.date.localeCompare(b.date));
+  list.innerHTML = sorted.map(day => {
+    const compsCount = allComps.filter(c => c.tagId === day.id).length;
+    const dateObj = day.date ? new Date(day.date) : null;
+    const dayNum = dateObj ? dateObj.getDate() : '?';
+    const monthStr = dateObj ? dateObj.toLocaleString('de', {month:'short'}) : '';
+    return `<div class="day-item" onclick="openDayPage('${day.id}')">
+      <div class="day-badge"><span>${dayNum}</span>${monthStr}</div>
+      <div class="day-info">
+        <h4>${escHtml(day.name)}</h4>
+        <p>${compsCount} Wettkampf${compsCount !== 1 ? 'kämpfe' : ''}</p>
+      </div>
+      <div class="day-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+    </div>`;
+  }).join('');
+}
+
+// ===================== DAY PAGE =====================
+function openDayPage(dayId) {
+  currentDay = allDays.find(d => d.id === dayId);
+  if (!currentDay) return;
+  document.getElementById('day-page-title').textContent = currentDay.name;
+  document.getElementById('day-page-date').textContent = formatDate(currentDay.date);
+  renderComps();
+  showPage('day');
+  document.getElementById('nav-home').classList.add('active');
+}
+
+function renderComps() {
+  const list = document.getElementById('comps-list');
+  const comps = allComps.filter(c => c.tagId === currentDay.id);
+  if (!comps.length) {
+    list.innerHTML = `<div class="empty-state"><p>Noch keine Wettkämpfe.<br>Tippe + um einen hinzuzufügen.</p></div>`;
+    return;
+  }
+  list.innerHTML = `<table class="comp-table">
+    <tr>
+      <th>Wettkampf</th>
+      <th>Melde</th>
+      <th>Best</th>
+      <th>Geschwommen</th>
+      <th class="action-col"></th>
+    </tr>
+    ${comps.map(c => {
+      const gz = c.geschwommen;
+      const bz = c.bestzeit;
+      let gzClass = 'time-neutral';
+      if (gz && bz) {
+        gzClass = compareTime(gz, bz) <= 0 ? 'time-good' : 'time-bad';
+      }
+      return `<tr>
+        <td><div class="discipline">${escHtml(c.discipline)}</div></td>
+        <td><div class="time-cell">${c.meldezeit || '–'}</div></td>
+        <td><div class="time-cell">${c.bestzeit || '–'}</div></td>
+        <td><div class="time-cell ${gzClass}">${c.geschwommen || '–'}</div></td>
+        <td><button class="edit-btn" onclick="openCompModal('${c.id}')">✏️</button></td>
+      </tr>`;
+    }).join('')}
+  </table>`;
+}
+
+// ===================== TIME HELPERS =====================
+function compareTime(a, b) {
+  return timeToTenths(a) - timeToTenths(b);
+}
+
+function timeToTenths(t) {
+  if (!t) return Infinity;
+  const parts = t.split(',');
+  const m = parseInt(parts[0]) || 0;
+  const s = parseInt(parts[1]) || 0;
+  const z = parseInt(parts[2]) || 0;
+  return m * 600 + s * 10 + z;
+}
+
+function buildTime(m, s, z) {
+  if (!m && !s && !z) return '';
+  const mm = parseInt(m) || 0;
+  const ss = String(parseInt(s) || 0).padStart(2, '0');
+  const zz = parseInt(z) || 0;
+  return `${mm},${ss},${zz}`;
+}
+
+function parseTime(t) {
+  if (!t) return {m:'', s:'', z:''};
+  const p = t.split(',');
+  return { m: p[0]||'', s: p[1]||'', z: p[2]||'' };
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const obj = new Date(d);
+  return obj.toLocaleDateString('de-DE', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+}
+
+// ===================== DAY MODAL =====================
+function openDayModal(day) {
+  document.getElementById('modal-day-title').textContent = day ? 'Tag bearbeiten' : 'Neuer Wettkampftag';
+  document.getElementById('day-edit-id').value = day ? day.id : '';
+  document.getElementById('day-date').value = day ? day.date : new Date().toISOString().split('T')[0];
+  document.getElementById('day-name').value = day ? day.name : '';
+  document.getElementById('day-delete-btn').style.display = day ? 'block' : 'none';
+  document.getElementById('modal-day').classList.add('open');
+}
+
+async function saveDay() {
+  const id = document.getElementById('day-edit-id').value;
+  const date = document.getElementById('day-date').value;
+  const name = document.getElementById('day-name').value.trim();
+  if (!date || !name) { showToast('Bitte alle Felder ausfüllen'); return; }
+
+  try {
+    if (id) {
+      // Update
+      const rowNum = await findRowNumber('Tage', id);
+      if (rowNum < 0) { showToast('Zeile nicht gefunden'); return; }
+      await sheetsUpdate(`Tage!A${rowNum}:C${rowNum}`, [id, date, name]);
+      const idx = allDays.findIndex(d => d.id === id);
+      if (idx >= 0) allDays[idx] = {id, date, name};
+    } else {
+      // Create
+      const newId = 'D' + Date.now();
+      await sheetsAppend('Tage', [newId, date, name]);
+      allDays.push({id: newId, date, name});
+    }
+    closeModal('modal-day');
+    renderDays();
+    if (currentDay && currentDay.id === id) {
+      document.getElementById('day-page-title').textContent = name;
+      document.getElementById('day-page-date').textContent = formatDate(date);
+      currentDay.name = name; currentDay.date = date;
+    }
+    showToast('✓ Gespeichert');
+  } catch(e) {
+    showToast('Fehler: ' + e.message);
+  }
+}
+
+async function deleteDay() {
+  const id = document.getElementById('day-edit-id').value;
+  if (!confirm('Tag und alle Wettkämpfe löschen?')) return;
+  try {
+    const rowNum = await findRowNumber('Tage', id);
+    if (rowNum >= 0) await sheetsClear(`Tage!A${rowNum}:Z${rowNum}`);
+    // Delete all comps for this day
+    const compsToDelete = allComps.filter(c => c.tagId === id);
+    for (const c of compsToDelete) {
+      const r = await findRowNumber('Wettkämpfe', c.id);
+      if (r >= 0) await sheetsClear(`Wettkämpfe!A${r}:Z${r}`);
+    }
+    allDays = allDays.filter(d => d.id !== id);
+    allComps = allComps.filter(c => c.tagId !== id);
+    closeModal('modal-day');
+    showPage('home');
+    renderDays();
+    showToast('✓ Gelöscht');
+  } catch(e) { showToast('Fehler: ' + e.message); }
+}
+
+// ===================== COMP MODAL =====================
+function openCompModal(compId) {
+  const comp = compId ? allComps.find(c => c.id === compId) : null;
+  document.getElementById('modal-comp-title').textContent = comp ? 'Wettkampf bearbeiten' : 'Neuer Wettkampf';
+  document.getElementById('comp-edit-id').value = comp ? comp.id : '';
+  document.getElementById('comp-discipline').value = comp ? comp.discipline : '';
+  const mt = parseTime(comp?.meldezeit);
+  const bz = parseTime(comp?.bestzeit);
+  const gz = parseTime(comp?.geschwommen);
+  document.getElementById('mt-m').value = mt.m;
+  document.getElementById('mt-s').value = mt.s;
+  document.getElementById('mt-z').value = mt.z;
+  document.getElementById('bz-m').value = bz.m;
+  document.getElementById('bz-s').value = bz.s;
+  document.getElementById('bz-z').value = bz.z;
+  document.getElementById('gz-m').value = gz.m;
+  document.getElementById('gz-s').value = gz.s;
+  document.getElementById('gz-z').value = gz.z;
+  document.getElementById('comp-delete-btn').style.display = comp ? 'block' : 'none';
+  document.getElementById('modal-comp').classList.add('open');
+}
+
+async function saveComp() {
+  const id = document.getElementById('comp-edit-id').value;
+  const discipline = document.getElementById('comp-discipline').value.trim();
+  if (!discipline) { showToast('Bitte Disziplin eingeben'); return; }
+  const meldezeit = buildTime(document.getElementById('mt-m').value, document.getElementById('mt-s').value, document.getElementById('mt-z').value);
+  const bestzeit = buildTime(document.getElementById('bz-m').value, document.getElementById('bz-s').value, document.getElementById('bz-z').value);
+  const geschwommen = buildTime(document.getElementById('gz-m').value, document.getElementById('gz-s').value, document.getElementById('gz-z').value);
+
+  try {
+    if (id) {
+      const rowNum = await findRowNumber('Wettkämpfe', id);
+      if (rowNum < 0) { showToast('Zeile nicht gefunden'); return; }
+      await sheetsUpdate(`Wettkämpfe!A${rowNum}:F${rowNum}`, [id, currentDay.id, discipline, meldezeit, bestzeit, geschwommen]);
+      const idx = allComps.findIndex(c => c.id === id);
+      if (idx >= 0) allComps[idx] = {id, tagId: currentDay.id, discipline, meldezeit, bestzeit, geschwommen};
+    } else {
+      const newId = 'C' + Date.now();
+      await sheetsAppend('Wettkämpfe', [newId, currentDay.id, discipline, meldezeit, bestzeit, geschwommen]);
+      allComps.push({id: newId, tagId: currentDay.id, discipline, meldezeit, bestzeit, geschwommen});
+    }
+    closeModal('modal-comp');
+    renderComps();
+    showToast('✓ Gespeichert');
+  } catch(e) { showToast('Fehler: ' + e.message); }
+}
+
+async function deleteComp() {
+  const id = document.getElementById('comp-edit-id').value;
+  if (!confirm('Wettkampf löschen?')) return;
+  try {
+    const rowNum = await findRowNumber('Wettkämpfe', id);
+    if (rowNum >= 0) await sheetsClear(`Wettkämpfe!A${rowNum}:Z${rowNum}`);
+    allComps = allComps.filter(c => c.id !== id);
+    closeModal('modal-comp');
+    renderComps();
+    showToast('✓ Gelöscht');
+  } catch(e) { showToast('Fehler: ' + e.message); }
+}
+
+// ===================== BESTZEITEN =====================
+function renderBestzeiten() {
+  const list = document.getElementById('best-list');
+  if (!allComps.length) {
+    list.innerHTML = `<div class="empty-state"><p>Noch keine Wettkämpfe vorhanden.</p></div>`;
+    return;
+  }
+  // Group by discipline, find best (lowest) geschwommene Zeit
+  const byDisc = {};
+  for (const c of allComps) {
+    const d = c.discipline.toLowerCase();
+    if (!byDisc[d]) byDisc[d] = [];
+    byDisc[d].push(c);
+  }
+  const bestArr = Object.entries(byDisc).map(([disc, comps]) => {
+    const withTime = comps.filter(c => c.geschwommen);
+    if (!withTime.length) return { disc: comps[0].discipline, best: null, day: null };
+    withTime.sort((a,b) => compareTime(a.geschwommen, b.geschwommen));
+    const best = withTime[0];
+    const day = allDays.find(d => d.id === best.tagId);
+    return { disc: comps[0].discipline, best: best.geschwommen, day };
+  }).sort((a,b) => a.disc.localeCompare(b.disc));
+
+  list.innerHTML = bestArr.map(item => `
+    <div class="best-item">
+      <div>
+        <div class="best-disc">${escHtml(item.disc)}</div>
+        <div class="best-meta">${item.day ? escHtml(item.day.name) + ' · ' + formatDate(item.day.date) : '–'}</div>
+      </div>
+      <div class="best-time">${item.best || '–'}</div>
+    </div>
+  `).join('');
+}
+
+// ===================== CONFIG =====================
+function saveConfig() {
+  config.sheetId = document.getElementById('cfg-sheet-id').value.trim();
+  config.apiKey = document.getElementById('cfg-api-key').value.trim();
+  localStorage.setItem('swimconfig', JSON.stringify(config));
+  showToast('Konfiguration gespeichert');
+  loadConfigStatus();
+  loadAllData();
+}
+
+async function loadConfigStatus() {
+  const statusEl = document.getElementById('conn-status');
+  if (!config.sheetId || !config.apiKey) {
+    statusEl.innerHTML = `<span class="status-dot status-warn"></span>Nicht konfiguriert`;
+    return;
+  }
+  statusEl.innerHTML = `<span class="status-dot status-warn"></span>Verbinde...`;
+  try {
+    await sheetsGet('Tage!A1:C1');
+    statusEl.innerHTML = `<span class="status-dot status-ok"></span>Verbunden ✓`;
+  } catch(e) {
+    statusEl.innerHTML = `<span class="status-dot status-err"></span>Fehler: ${e.message}`;
+  }
+}
+
+// ===================== UI HELPERS =====================
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
